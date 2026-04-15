@@ -30,8 +30,18 @@ rootCommand.SetHandler((DirectoryInfo path, bool dryRun, bool verbose) =>
         Environment.Exit(1);
     }
 
-    var targets = path
-        .EnumerateDirectories("*", SearchOption.AllDirectories)
+    // Safety check: Only allow running from a solution root
+    if (!path.EnumerateFiles("*.sln").Any() && !path.EnumerateFiles("*.slnx").Any())
+    {
+        Console.ForegroundColor = ConsoleColor.Red;
+        Console.Error.WriteLine($"Error: No solution file (.sln or .slnx) found in '{path.FullName}'");
+        Console.Error.WriteLine("For safety, this tool can only be run from the root of a solution folder.");
+        Console.ResetColor();
+        Environment.Exit(1);
+    }
+
+    const int maxDepth = 4;
+    var targets = GetBinObjFolders(path, maxDepth)
         .Where(d => d.Name is "bin" or "obj")
         // Skip dirs that are inside another bin/obj (already handled by parent deletion)
         .Where(d => !IsBeneathBinOrObj(d))
@@ -109,4 +119,35 @@ static bool IsProjectDirectory(DirectoryInfo? dir)
         return false;
 
     return dir.EnumerateFiles("*.*proj").Any();
+}
+
+static IEnumerable<DirectoryInfo> GetBinObjFolders(DirectoryInfo root, int maxDepth)
+{
+    return GetBinObjFoldersRecursive(root, 0, maxDepth);
+}
+
+static IEnumerable<DirectoryInfo> GetBinObjFoldersRecursive(DirectoryInfo current, int currentDepth, int maxDepth)
+{
+    // Yield subdirectories at current level
+    DirectoryInfo[] subdirectories;
+    try
+    {
+        subdirectories = current.GetDirectories();
+    }
+    catch (UnauthorizedAccessException)
+    {
+        yield break;
+    }
+
+    foreach (var subdir in subdirectories)
+    {
+        yield return subdir;
+
+        // Only recurse if we haven't reached max depth
+        if (currentDepth < maxDepth)
+        {
+            foreach (var nested in GetBinObjFoldersRecursive(subdir, currentDepth + 1, maxDepth))
+                yield return nested;
+        }
+    }
 }

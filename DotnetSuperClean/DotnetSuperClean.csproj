@@ -9,7 +9,7 @@
     <PackAsTool>true</PackAsTool>
     <ToolCommandName>dotnet-superclean</ToolCommandName>
     <PackageId>DotnetSuperClean</PackageId>
-    <Version>1.0.5</Version>
+    <Version>1.0.6</Version>
     <Description>Removes all bin and obj folders from a .NET solution or project directory.</Description>
     <Authors>Richard Garside - Garsonix</Authors>
     <PackageTags>dotnet;cli;tool;clean;build;bin;obj</PackageTags>
